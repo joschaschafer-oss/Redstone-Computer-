@@ -1,0 +1,1246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BatPU-2 Minecraft Redstone Computer Simulator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1e1e1e;
+            color: #e0e0e0;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .tabs {
+            display: flex;
+            background: #2d2d2d;
+            border-bottom: 2px solid #444;
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px 16px;
+            border: none;
+            background: #2d2d2d;
+            color: #888;
+            cursor: pointer;
+            font-family: monospace;
+            font-size: 14px;
+            transition: all 0.3s;
+            white-space: nowrap;
+            min-width: 60px;
+        }
+
+        .tab-btn.active {
+            background: #3c3c3c;
+            color: #61dafb;
+            border-bottom: 3px solid #61dafb;
+        }
+
+        .tab-btn:hover {
+            background: #3c3c3c;
+            color: #e0e0e0;
+        }
+
+        .content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .tab-content {
+            display: none;
+            flex: 1;
+            overflow: auto;
+            padding: 16px;
+        }
+
+        .tab-content.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Assembly Tab */
+        .assembly-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 16px;
+            background: #0e7c0e;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: monospace;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: #0f9c0f;
+        }
+
+        .btn.secondary {
+            background: #444;
+            color: #e0e0e0;
+        }
+
+        .btn.secondary:hover {
+            background: #555;
+        }
+
+        .btn:disabled {
+            background: #333;
+            color: #666;
+            cursor: not-allowed;
+        }
+
+        .editor {
+            flex: 1;
+            background: #1e1e1e;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 12px;
+            font-family: monospace;
+            color: #e0e0e0;
+            font-size: 14px;
+            resize: none;
+            line-height: 1.5;
+        }
+
+        .select {
+            padding: 8px;
+            background: #2d2d2d;
+            color: #e0e0e0;
+            border: 1px solid #444;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+
+        /* CPU Tab */
+        .cpu-container {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .status {
+            background: #2d2d2d;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 12px;
+        }
+
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #3c3c3c;
+            font-size: 14px;
+        }
+
+        .status-row:last-child {
+            border-bottom: none;
+        }
+
+        .status-label {
+            color: #888;
+            font-weight: bold;
+        }
+
+        .status-value {
+            color: #61dafb;
+            font-weight: bold;
+            font-family: monospace;
+        }
+
+        .registers {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+        }
+
+        .register {
+            background: #2d2d2d;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .register-name {
+            color: #888;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .register-value {
+            color: #61dafb;
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 8px;
+            font-family: monospace;
+        }
+
+        /* Memory Tab */
+        .memory-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .memory-section {
+            background: #2d2d2d;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 12px;
+        }
+
+        .memory-section-title {
+            color: #61dafb;
+            font-weight: bold;
+            margin-bottom: 12px;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .memory-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            gap: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .memory-cell {
+            background: #1e1e1e;
+            border: 1px solid #444;
+            padding: 8px;
+            text-align: center;
+            font-size: 12px;
+            border-radius: 3px;
+        }
+
+        .memory-cell.active {
+            background: #0e7c0e;
+            border-color: #0f9c0f;
+            color: #fff;
+        }
+
+        .memory-cell-addr {
+            color: #888;
+            font-size: 10px;
+            margin-bottom: 4px;
+        }
+
+        .memory-cell-value {
+            color: #61dafb;
+            font-weight: bold;
+            font-family: monospace;
+        }
+
+        /* Display Tab */
+        .display-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            padding: 20px;
+        }
+
+        .display-screen {
+            width: 320px;
+            height: 320px;
+            background: #000;
+            border: 2px solid #61dafb;
+            border-radius: 4px;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
+        .char-display {
+            width: 320px;
+            height: 160px;
+            background: #000;
+            border: 2px solid #61dafb;
+            border-radius: 4px;
+            padding: 8px;
+            color: #0f0;
+            font-family: monospace;
+            font-size: 14px;
+            overflow: hidden;
+            white-space: pre;
+            line-height: 1.2;
+        }
+
+        /* 3D Tab */
+        #canvas-3d {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Message Area */
+        .message-area {
+            background: #2d2d2d;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 12px;
+            max-height: 100px;
+            overflow-y: auto;
+            font-size: 12px;
+            color: #888;
+        }
+
+        .message-error {
+            color: #ff6b6b;
+        }
+
+        .message-success {
+            color: #0f9c0f;
+        }
+
+        .message-info {
+            color: #61dafb;
+        }
+
+        @media (max-width: 768px) {
+            .tab-btn {
+                padding: 10px 12px;
+                font-size: 12px;
+            }
+
+            .btn {
+                padding: 8px 12px;
+                font-size: 12px;
+            }
+
+            .controls {
+                gap: 6px;
+            }
+
+            .register-value {
+                font-size: 14px;
+            }
+
+            .display-screen, .char-display {
+                width: 240px;
+                height: 240px;
+            }
+
+            .char-display {
+                height: 120px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="3d">🧱 3D</button>
+            <button class="tab-btn" data-tab="assembly">💻 Assembly</button>
+            <button class="tab-btn" data-tab="cpu">🧠 CPU</button>
+            <button class="tab-btn" data-tab="memory">💾 Memory</button>
+            <button class="tab-btn" data-tab="display">🖥 Display</button>
+        </div>
+
+        <div class="content">
+            <!-- 3D View -->
+            <div class="tab-content active" id="tab-3d">
+                <canvas id="canvas-3d"></canvas>
+            </div>
+
+            <!-- Assembly Editor -->
+            <div class="tab-content" id="tab-assembly">
+                <div class="assembly-container">
+                    <div class="controls">
+                        <select class="select" id="example-select">
+                            <option value="">Load Example...</option>
+                            <option value="hello">Hello World</option>
+                            <option value="pixel">Draw Pixel</option>
+                            <option value="fill">Fill Display</option>
+                        </select>
+                        <button class="btn" onclick="cpu.assembleCode()">⚙ Assemble</button>
+                        <button class="btn" onclick="cpu.start()">▶ Start</button>
+                        <button class="btn" onclick="cpu.pause()">⏸ Pause</button>
+                        <button class="btn" onclick="cpu.step()">⏭ Step</button>
+                        <button class="btn secondary" onclick="cpu.reset()">↻ Reset</button>
+                    </div>
+                    <textarea id="code-editor" class="editor" placeholder="Write assembly code here..."></textarea>
+                    <div class="message-area" id="message-area"></div>
+                </div>
+            </div>
+
+            <!-- CPU Status -->
+            <div class="tab-content" id="tab-cpu">
+                <div class="cpu-container">
+                    <div class="status">
+                        <div class="status-row">
+                            <span class="status-label">Program Counter:</span>
+                            <span class="status-value" id="pc-display">0</span>
+                        </div>
+                        <div class="status-row">
+                            <span class="status-label">Instructions Executed:</span>
+                            <span class="status-value" id="instr-count">0</span>
+                        </div>
+                        <div class="status-row">
+                            <span class="status-label">Current Instruction:</span>
+                            <span class="status-value" id="current-instr">-</span>
+                        </div>
+                        <div class="status-row">
+                            <span class="status-label">Zero Flag:</span>
+                            <span class="status-value" id="flag-zero">0</span>
+                        </div>
+                        <div class="status-row">
+                            <span class="status-label">Carry Flag:</span>
+                            <span class="status-value" id="flag-carry">0</span>
+                        </div>
+                        <div class="status-row">
+                            <span class="status-label">CPU State:</span>
+                            <span class="status-value" id="cpu-state">HALTED</span>
+                        </div>
+                        <div class="status-row">
+                            <span class="status-label">Clock Speed:</span>
+                            <span class="status-value" id="clock-speed">1 Hz</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="memory-section-title">Registers</div>
+                        <div class="registers" id="registers-display"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Memory View -->
+            <div class="tab-content" id="tab-memory">
+                <div class="memory-container">
+                    <div class="memory-section">
+                        <div class="memory-section-title">Instruction Memory</div>
+                        <div class="memory-grid" id="imem-display"></div>
+                    </div>
+                    <div class="memory-section">
+                        <div class="memory-section-title">Data Memory</div>
+                        <div class="memory-grid" id="dmem-display"></div>
+                    </div>
+                    <div class="memory-section">
+                        <div class="memory-section-title">Call Stack</div>
+                        <div class="memory-grid" id="stack-display"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Display View -->
+            <div class="tab-content" id="tab-display">
+                <div class="display-container">
+                    <div>
+                        <div style="margin-bottom: 8px; color: #888; font-size: 12px;">Pixel Display (32×32)</div>
+                        <canvas id="pixel-display" class="display-screen" width="32" height="32"></canvas>
+                    </div>
+                    <div>
+                        <div style="margin-bottom: 8px; color: #888; font-size: 12px;">Character Display</div>
+                        <div class="char-display" id="char-display"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============ EXAMPLE PROGRAMS ============
+        const EXAMPLES = {
+            hello: `; Hello World - Write characters to display
+define pixel_x 0x1000
+define pixel_y 0x1001
+define draw_pixel 0x1002
+define clear_screen 0x1003
+define buffer_screen 0x1004
+define clear_chars 0x1005
+define write_char 0x1006
+define buffer_chars 0x1007
+
+; Clear character display
+LDI r15 clear_chars
+STR r15 r0
+
+; Write "Hi!"
+LDI r1 72   ; 'H'
+LDI r15 write_char
+STR r15 r1
+
+LDI r1 105  ; 'i'
+LDI r15 write_char
+STR r15 r1
+
+LDI r1 33   ; '!'
+LDI r15 write_char
+STR r15 r1
+
+LDI r15 buffer_chars
+STR r15 r0
+
+HLT
+`,
+
+            pixel: `; Draw single pixel at (3, 4)
+define pixel_x 0x1000
+define pixel_y 0x1001
+define draw_pixel 0x1002
+define clear_screen 0x1003
+define buffer_screen 0x1004
+
+; Clear screen
+LDI r15 clear_screen
+STR r15 r0
+
+; Set X coordinate
+LDI r1 3
+LDI r15 pixel_x
+STR r15 r1
+
+; Set Y coordinate
+LDI r2 4
+LDI r15 pixel_y
+STR r15 r2
+
+; Draw pixel (color in r0)
+LDI r15 draw_pixel
+STR r15 r0
+
+; Buffer to screen
+LDI r15 buffer_screen
+STR r15 r0
+
+HLT
+`,
+
+            fill: `; Fill 32x32 display with pattern
+define pixel_x 0x1000
+define pixel_y 0x1001
+define draw_pixel 0x1002
+define clear_screen 0x1003
+define buffer_screen 0x1004
+
+; Clear screen
+LDI r15 clear_screen
+STR r15 r0
+
+; Initialize counters
+LDI r3 0    ; x counter
+LDI r4 0    ; y counter
+
+.loop_y
+    LDI r3 0
+    .loop_x
+        ; Set X
+        LDI r15 pixel_x
+        STR r15 r3
+        
+        ; Set Y
+        LDI r15 pixel_y
+        STR r15 r4
+        
+        ; Draw pixel (color = x XOR y pattern)
+        LDI r15 draw_pixel
+        STR r15 r3
+        
+        ; Increment X
+        INC r3
+        LDI r1 32
+        SUB r3 r1
+        BRH zero .next_y
+        JMP .loop_x
+    
+    .next_y
+    INC r4
+    LDI r1 32
+    SUB r4 r1
+    BRH zero .done
+    JMP .loop_y
+
+.done
+LDI r15 buffer_screen
+STR r15 r0
+HLT
+`
+        };
+
+        // ============ CPU EMULATOR ============
+        class CPUEmulator {
+            constructor() {
+                this.registers = new Uint32Array(16);
+                this.instructionMemory = [];
+                this.dataMemory = new Uint32Array(256);
+                this.callStack = [];
+                this.pc = 0;
+                this.flagZero = 0;
+                this.flagCarry = 0;
+                this.running = false;
+                this.instructionCount = 0;
+                this.clockSpeed = 100; // ms per instruction
+                this.labels = {};
+                this.defines = {};
+
+                // Display ports
+                this.pixelX = 0;
+                this.pixelY = 0;
+                this.pixelBuffer = new Uint8Array(32 * 32);
+                this.charBuffer = "";
+                this.currentLine = 0;
+            }
+
+            assembleCode() {
+                try {
+                    const code = document.getElementById("code-editor").value;
+                    this.instructionMemory = [];
+                    this.labels = {};
+                    this.defines = {};
+                    this.pc = 0;
+                    this.instructionCount = 0;
+
+                    const lines = code.split("\n").map(line => {
+                        // Remove comments
+                        const commentIdx = line.indexOf(";");
+                        return commentIdx !== -1 ? line.substring(0, commentIdx) : line;
+                    }).map(line => line.trim()).filter(line => line.length > 0);
+
+                    // First pass: process defines and labels
+                    let instrIndex = 0;
+                    for (const line of lines) {
+                        if (line.startsWith("define ")) {
+                            const parts = line.substring(7).trim().split(/\s+/);
+                            if (parts.length >= 2) {
+                                const name = parts[0];
+                                const value = this.parseValue(parts[1]);
+                                this.defines[name] = value;
+                            }
+                        } else if (line.startsWith(".")) {
+                            const labelName = line.substring(1);
+                            this.labels[labelName] = instrIndex;
+                        } else if (!line.startsWith("define ") && !line.startsWith(".")) {
+                            instrIndex++;
+                        }
+                    }
+
+                    // Second pass: assemble instructions
+                    for (let line of lines) {
+                        if (line.startsWith("define ") || line.startsWith(".")) {
+                            continue;
+                        }
+
+                        // Check for inline label
+                        if (line.includes(".")) {
+                            const parts = line.split(/\s+/);
+                            let inlineLabel = null;
+                            for (const part of parts) {
+                                if (part.startsWith(".")) {
+                                    inlineLabel = part.substring(1);
+                                    this.labels[inlineLabel] = this.instructionMemory.length;
+                                    line = line.replace(part, "").trim();
+                                    break;
+                                }
+                            }
+                        }
+
+                        const instr = this.parseInstruction(line);
+                        if (instr) {
+                            this.instructionMemory.push(instr);
+                        }
+                    }
+
+                    this.addMessage(`✓ Assembled ${this.instructionMemory.length} instructions`, "success");
+                    this.updateUI();
+                } catch (e) {
+                    this.addMessage(`✗ Assembly Error: ${e.message}`, "error");
+                }
+            }
+
+            parseValue(str) {
+                str = str.trim();
+                if (str.startsWith("0x")) {
+                    return parseInt(str, 16);
+                } else if (str.startsWith("0b")) {
+                    return parseInt(str, 2);
+                } else if (str.startsWith("'") || str.startsWith('"')) {
+                    return str.charCodeAt(1);
+                } else if (str.startsWith(".")) {
+                    return this.labels[str.substring(1)] || 0;
+                } else if (this.defines[str] !== undefined) {
+                    return this.defines[str];
+                } else {
+                    return parseInt(str);
+                }
+            }
+
+            parseRegister(str) {
+                str = str.trim().toLowerCase();
+                if (str === "pc") return -1;
+                if (str.startsWith("r") && str.length <= 3) {
+                    const num = parseInt(str.substring(1));
+                    if (num >= 0 && num <= 15) return num;
+                }
+                throw new Error(`Invalid register: ${str}`);
+            }
+
+            parseInstruction(line) {
+                const parts = line.trim().split(/\s+/);
+                if (parts.length === 0) return null;
+
+                const cmd = parts[0].toUpperCase();
+
+                switch (cmd) {
+                    case "LDI": {
+                        const reg = this.parseRegister(parts[1]);
+                        const val = this.parseValue(parts[2]);
+                        return { cmd: "LDI", reg, val };
+                    }
+                    case "ADD": {
+                        const reg1 = this.parseRegister(parts[1]);
+                        const reg2 = this.parseRegister(parts[2]);
+                        return { cmd: "ADD", reg1, reg2 };
+                    }
+                    case "SUB": {
+                        const reg1 = this.parseRegister(parts[1]);
+                        const reg2 = this.parseRegister(parts[2]);
+                        return { cmd: "SUB", reg1, reg2 };
+                    }
+                    case "INC": {
+                        const reg = this.parseRegister(parts[1]);
+                        return { cmd: "INC", reg };
+                    }
+                    case "DEC": {
+                        const reg = this.parseRegister(parts[1]);
+                        return { cmd: "DEC", reg };
+                    }
+                    case "LD": {
+                        const reg1 = this.parseRegister(parts[1]);
+                        const reg2 = this.parseRegister(parts[2]);
+                        return { cmd: "LD", reg1, reg2 };
+                    }
+                    case "ST": {
+                        const reg1 = this.parseRegister(parts[1]);
+                        const reg2 = this.parseRegister(parts[2]);
+                        return { cmd: "ST", reg1, reg2 };
+                    }
+                    case "STR": {
+                        const reg1 = this.parseRegister(parts[1]);
+                        const reg2 = this.parseRegister(parts[2]);
+                        return { cmd: "STR", reg1, reg2 };
+                    }
+                    case "JMP": {
+                        const label = parts[1].substring(1);
+                        const addr = this.labels[label] || 0;
+                        return { cmd: "JMP", addr };
+                    }
+                    case "BRH": {
+                        const flag = parts[1].toLowerCase();
+                        const label = parts[2].substring(1);
+                        const addr = this.labels[label] || 0;
+                        return { cmd: "BRH", flag, addr };
+                    }
+                    case "HLT":
+                        return { cmd: "HLT" };
+                    default:
+                        return null;
+                }
+            }
+
+            execute() {
+                if (this.pc >= this.instructionMemory.length) {
+                    this.running = false;
+                    this.addMessage("Program terminated", "info");
+                    return;
+                }
+
+                const instr = this.instructionMemory[this.pc];
+                this.instructionCount++;
+
+                try {
+                    switch (instr.cmd) {
+                        case "LDI":
+                            this.registers[instr.reg] = instr.val & 0xFFFFFFFF;
+                            break;
+
+                        case "ADD": {
+                            const result = (this.registers[instr.reg1] + this.registers[instr.reg2]) >>> 0;
+                            this.flagCarry = result > 0xFFFFFFFF ? 1 : 0;
+                            this.registers[instr.reg1] = result & 0xFFFFFFFF;
+                            this.flagZero = result === 0 ? 1 : 0;
+                            break;
+                        }
+
+                        case "SUB": {
+                            const result = this.registers[instr.reg1] - this.registers[instr.reg2];
+                            this.flagCarry = result < 0 ? 1 : 0;
+                            this.registers[instr.reg1] = result & 0xFFFFFFFF;
+                            this.flagZero = (result & 0xFFFFFFFF) === 0 ? 1 : 0;
+                            break;
+                        }
+
+                        case "INC":
+                            this.registers[instr.reg]++;
+                            this.flagZero = this.registers[instr.reg] === 0 ? 1 : 0;
+                            break;
+
+                        case "DEC":
+                            this.registers[instr.reg]--;
+                            this.flagZero = this.registers[instr.reg] === 0 ? 1 : 0;
+                            break;
+
+                        case "LD":
+                            this.registers[instr.reg1] = this.dataMemory[this.registers[instr.reg2] & 0xFF];
+                            break;
+
+                        case "ST":
+                            this.dataMemory[this.registers[instr.reg2] & 0xFF] = this.registers[instr.reg1];
+                            break;
+
+                        case "STR": {
+                            const port = this.registers[instr.reg1];
+                            const value = this.registers[instr.reg2];
+                            this.handlePort(port, value);
+                            break;
+                        }
+
+                        case "JMP":
+                            this.pc = instr.addr - 1;
+                            break;
+
+                        case "BRH": {
+                            let branch = false;
+                            if (instr.flag === "zero" && this.flagZero) branch = true;
+                            if (instr.flag === "carry" && this.flagCarry) branch = true;
+                            if (instr.flag === "nz" && !this.flagZero) branch = true;
+
+                            if (branch) {
+                                this.pc = instr.addr - 1;
+                            }
+                            break;
+                        }
+
+                        case "HLT":
+                            this.running = false;
+                            break;
+                    }
+                } catch (e) {
+                    this.addMessage(`Runtime error at PC=${this.pc}: ${e.message}`, "error");
+                    this.running = false;
+                }
+
+                this.pc++;
+                this.updateUI();
+            }
+
+            handlePort(port, value) {
+                if (port === 0x1000) {
+                    this.pixelX = value & 0xFF;
+                } else if (port === 0x1001) {
+                    this.pixelY = value & 0xFF;
+                } else if (port === 0x1002) {
+                    this.drawPixel(this.pixelX, this.pixelY, value);
+                } else if (port === 0x1003) {
+                    this.pixelBuffer.fill(0);
+                } else if (port === 0x1004) {
+                    this.renderPixelDisplay();
+                } else if (port === 0x1005) {
+                    this.charBuffer = "";
+                    this.currentLine = 0;
+                } else if (port === 0x1006) {
+                    this.charBuffer += String.fromCharCode(value);
+                    if (this.charBuffer.length > 160) {
+                        this.charBuffer = this.charBuffer.substring(1);
+                    }
+                } else if (port === 0x1007) {
+                    document.getElementById("char-display").textContent = this.charBuffer;
+                }
+            }
+
+            drawPixel(x, y, color) {
+                if (x < 32 && y < 32) {
+                    this.pixelBuffer[y * 32 + x] = color ? 1 : 0;
+                }
+            }
+
+            renderPixelDisplay() {
+                const canvas = document.getElementById("pixel-display");
+                const ctx = canvas.getContext("2d");
+                const imageData = ctx.createImageData(32, 32);
+                const data = imageData.data;
+
+                for (let i = 0; i < 32 * 32; i++) {
+                    const idx = i * 4;
+                    if (this.pixelBuffer[i]) {
+                        data[idx] = 255;
+                        data[idx + 1] = 255;
+                        data[idx + 2] = 255;
+                        data[idx + 3] = 255;
+                    } else {
+                        data[idx] = 0;
+                        data[idx + 1] = 0;
+                        data[idx + 2] = 0;
+                        data[idx + 3] = 255;
+                    }
+                }
+
+                ctx.putImageData(imageData, 0, 0);
+            }
+
+            start() {
+                if (this.instructionMemory.length === 0) {
+                    this.addMessage("Assemble code first!", "error");
+                    return;
+                }
+                this.running = true;
+                this.runCycle();
+            }
+
+            runCycle() {
+                if (this.running && this.pc < this.instructionMemory.length) {
+                    this.execute();
+                    setTimeout(() => this.runCycle(), this.clockSpeed);
+                }
+            }
+
+            pause() {
+                this.running = false;
+                this.updateUI();
+            }
+
+            step() {
+                if (this.instructionMemory.length === 0) {
+                    this.addMessage("Assemble code first!", "error");
+                    return;
+                }
+                this.running = false;
+                this.execute();
+            }
+
+            reset() {
+                this.registers.fill(0);
+                this.dataMemory.fill(0);
+                this.callStack = [];
+                this.pc = 0;
+                this.flagZero = 0;
+                this.flagCarry = 0;
+                this.running = false;
+                this.instructionCount = 0;
+                this.pixelBuffer.fill(0);
+                this.charBuffer = "";
+                this.currentLine = 0;
+                document.getElementById("char-display").textContent = "";
+                const canvas = document.getElementById("pixel-display");
+                const ctx = canvas.getContext("2d");
+                ctx.fillStyle = "#000";
+                ctx.fillRect(0, 0, 32, 32);
+                this.updateUI();
+                this.addMessage("CPU reset", "info");
+            }
+
+            updateUI() {
+                // Update CPU status
+                document.getElementById("pc-display").textContent = this.pc;
+                document.getElementById("instr-count").textContent = this.instructionCount;
+                document.getElementById("flag-zero").textContent = this.flagZero;
+                document.getElementById("flag-carry").textContent = this.flagCarry;
+                document.getElementById("cpu-state").textContent = this.running ? "RUNNING" : "HALTED";
+                document.getElementById("clock-speed").textContent = (1000 / this.clockSpeed).toFixed(1) + " Hz";
+
+                if (this.pc < this.instructionMemory.length) {
+                    const instr = this.instructionMemory[this.pc];
+                    document.getElementById("current-instr").textContent = JSON.stringify(instr).substring(0, 50);
+                }
+
+                // Update registers
+                const regDisplay = document.getElementById("registers-display");
+                regDisplay.innerHTML = "";
+                for (let i = 0; i < 16; i++) {
+                    const div = document.createElement("div");
+                    div.className = "register";
+                    div.innerHTML = `<div class="register-name">r${i}</div><div class="register-value">0x${this.registers[i].toString(16).padStart(8, '0').toUpperCase()}</div>`;
+                    regDisplay.appendChild(div);
+                }
+
+                // Update instruction memory
+                const imemDisplay = document.getElementById("imem-display");
+                imemDisplay.innerHTML = "";
+                for (let i = 0; i < Math.min(16, this.instructionMemory.length); i++) {
+                    const div = document.createElement("div");
+                    div.className = "memory-cell" + (i === this.pc ? " active" : "");
+                    div.innerHTML = `<div class="memory-cell-addr">[${i}]</div><div class="memory-cell-value">${this.instructionMemory[i].cmd}</div>`;
+                    imemDisplay.appendChild(div);
+                }
+
+                // Update data memory
+                const dmemDisplay = document.getElementById("dmem-display");
+                dmemDisplay.innerHTML = "";
+                for (let i = 0; i < 16; i++) {
+                    if (this.dataMemory[i] !== 0) {
+                        const div = document.createElement("div");
+                        div.className = "memory-cell";
+                        div.innerHTML = `<div class="memory-cell-addr">[${i}]</div><div class="memory-cell-value">0x${this.dataMemory[i].toString(16).padStart(4, '0')}</div>`;
+                        dmemDisplay.appendChild(div);
+                    }
+                }
+
+                // Update call stack
+                const stackDisplay = document.getElementById("stack-display");
+                stackDisplay.innerHTML = "";
+                for (let i = 0; i < this.callStack.length; i++) {
+                    const div = document.createElement("div");
+                    div.className = "memory-cell";
+                    div.innerHTML = `<div class="memory-cell-addr">[${i}]</div><div class="memory-cell-value">0x${this.callStack[i].toString(16).padStart(4, '0')}</div>`;
+                    stackDisplay.appendChild(div);
+                }
+
+                // Update pixel display
+                this.renderPixelDisplay();
+            }
+
+            addMessage(msg, type = "info") {
+                const area = document.getElementById("message-area");
+                const div = document.createElement("div");
+                div.className = `message-${type}`;
+                div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+                area.appendChild(div);
+                area.scrollTop = area.scrollHeight;
+                if (area.children.length > 10) {
+                    area.removeChild(area.children[0]);
+                }
+            }
+        }
+
+        // ============ INITIALIZATION ============
+        const cpu = new CPUEmulator();
+
+        // Tab switching
+        document.querySelectorAll(".tab-btn").forEach(btn => {
+            btn.addEventListener("click", () => {
+                document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+                document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+                btn.classList.add("active");
+                document.getElementById(`tab-${btn.dataset.tab}`).classList.add("active");
+            });
+        });
+
+        // Example programs
+        document.getElementById("example-select").addEventListener("change", (e) => {
+            if (EXAMPLES[e.target.value]) {
+                document.getElementById("code-editor").value = EXAMPLES[e.target.value];
+                cpu.addMessage(`Loaded example: ${e.target.value}`, "success");
+            }
+        });
+
+        // Initial pixel display clear
+        const canvas = document.getElementById("pixel-display");
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, 32, 32);
+
+        // Load first example
+        document.getElementById("code-editor").value = EXAMPLES.hello;
+
+        // 3D Visualization setup
+        let scene, camera, renderer, computer3d;
+
+        function init3D() {
+            const container = document.getElementById("tab-3d");
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a1a);
+
+            camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(15, 12, 15);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            // Lighting
+            const light1 = new THREE.DirectionalLight(0xffffff, 0.8);
+            light1.position.set(20, 20, 20);
+            light1.castShadow = true;
+            light1.shadow.mapSize.width = 2048;
+            light1.shadow.mapSize.height = 2048;
+            scene.add(light1);
+
+            const light2 = new THREE.AmbientLight(0x606060);
+            scene.add(light2);
+
+            // Create computer visualization
+            buildComputer();
+
+            // Handle window resize
+            window.addEventListener("resize", () => {
+                const width = container.clientWidth;
+                const height = container.clientHeight;
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+                renderer.setSize(width, height);
+            });
+
+            // Mouse controls
+            let isDragging = false;
+            let previousMousePosition = { x: 0, y: 0 };
+
+            container.addEventListener("mousedown", (e) => {
+                isDragging = true;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            container.addEventListener("mousemove", (e) => {
+                if (isDragging) {
+                    const deltaX = e.clientX - previousMousePosition.x;
+                    const deltaY = e.clientY - previousMousePosition.y;
+
+                    const radius = Math.sqrt(
+                        camera.position.x ** 2 + camera.position.y ** 2 + camera.position.z ** 2
+                    );
+                    let phi = Math.atan2(camera.position.z, camera.position.x);
+                    let theta = Math.acos(camera.position.y / radius);
+
+                    phi -= deltaX * 0.01;
+                    theta -= deltaY * 0.01;
+                    theta = Math.max(0.1, Math.min(Math.PI - 0.1, theta));
+
+                    camera.position.x = radius * Math.sin(theta) * Math.cos(phi);
+                    camera.position.y = radius * Math.cos(theta);
+                    camera.position.z = radius * Math.sin(theta) * Math.sin(phi);
+                    camera.lookAt(0, 0, 0);
+
+                    previousMousePosition = { x: e.clientX, y: e.clientY };
+                }
+            });
+
+            container.addEventListener("mouseup", () => {
+                isDragging = false;
+            });
+
+            container.addEventListener("wheel", (e) => {
+                e.preventDefault();
+                const radius = Math.sqrt(
+                    camera.position.x ** 2 + camera.position.y ** 2 + camera.position.z ** 2
+                );
+                const newRadius = radius + (e.deltaY > 0 ? 2 : -2);
+                const factor = newRadius / radius;
+
+                camera.position.multiplyScalar(factor);
+                camera.lookAt(0, 0, 0);
+            });
+
+            animate();
+        }
+
+        function buildComputer() {
+            const group = new THREE.Group();
+
+            // CPU core
+            const cpuGeom = new THREE.BoxGeometry(3, 3, 3);
+            const cpuMat = new THREE.MeshStandardMaterial({ color: 0xff6b6b });
+            const cpuMesh = new THREE.Mesh(cpuGeom, cpuMat);
+            cpuMesh.castShadow = true;
+            cpuMesh.receiveShadow = true;
+            cpuMesh.position.set(-8, 0, 0);
+            group.add(cpuMesh);
+
+            // Instruction Memory (tower of blocks)
+            for (let i = 0; i < 8; i++) {
+                const imemGeom = new THREE.BoxGeometry(2, 0.8, 2);
+                const imemMat = new THREE.MeshStandardMaterial({ color: 0x61dafb });
+                const imemMesh = new THREE.Mesh(imemGeom, imemMat);
+                imemMesh.castShadow = true;
+                imemMesh.receiveShadow = true;
+                imemMesh.position.set(-3, i * 1, -5);
+                group.add(imemMesh);
+            }
+
+            // Data Memory
+            for (let i = 0; i < 6; i++) {
+                for (let j = 0; j < 3; j++) {
+                    const dmemGeom = new THREE.BoxGeometry(1.5, 0.6, 1.5);
+                    const dmemMat = new THREE.MeshStandardMaterial({ color: 0x95e1d3 });
+                    const dmemMesh = new THREE.Mesh(dmemGeom, dmemMat);
+                    dmemMesh.castShadow = true;
+                    dmemMesh.receiveShadow = true;
+                    dmemMesh.position.set(3 + i * 2, 0, -5 + j * 2);
+                    group.add(dmemMesh);
+                }
+            }
+
+            // Registers
+            for (let i = 0; i < 8; i++) {
+                const regGeom = new THREE.BoxGeometry(1, 1, 1);
+                const regMat = new THREE.MeshStandardMaterial({ color: 0xa78bfa });
+                const regMesh = new THREE.Mesh(regGeom, regMat);
+                regMesh.castShadow = true;
+                regMesh.receiveShadow = true;
+                regMesh.position.set(-8 + i, 5, -3);
+                group.add(regMesh);
+            }
+
+            // Display panel
+            const displayGeom = new THREE.PlaneGeometry(8, 8);
+            const displayMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, emissive: 0x333333 });
+            const displayMesh = new THREE.Mesh(displayGeom, displayMat);
+            displayMesh.receiveShadow = true;
+            displayMesh.position.set(0, 0, 8);
+            group.add(displayMesh);
+
+            scene.add(group);
+            computer3d = group;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (computer3d) {
+                computer3d.rotation.y += 0.0005;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // Initialize everything
+        window.addEventListener("load", () => {
+            init3D();
+            cpu.updateUI();
+        });
+
+        // Handle tab switches for 3D resize
+        document.getElementById("tab-3d").addEventListener("click", () => {
+            setTimeout(() => {
+                if (renderer) {
+                    const container = document.getElementById("tab-3d");
+                    renderer.setSize(container.clientWidth, container.clientHeight);
+                    camera.aspect = container.clientWidth / container.clientHeight;
+                    camera.updateProjectionMatrix();
+                }
+            }, 100);
+        });
+    </script>
+</body>
+</html>
